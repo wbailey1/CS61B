@@ -2,9 +2,6 @@ package editor;
 
 import javafx.application.Application;
 import javafx.stage.Stage;
-import javafx.animation.KeyFrame;
-import javafx.animation.Timeline;
-import javafx.event.ActionEvent;
 import javafx.event.EventHandler;
 import javafx.geometry.VPos;
 import javafx.scene.Group;
@@ -12,10 +9,8 @@ import javafx.scene.Scene;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyEvent;
 import javafx.scene.paint.Color;
-import javafx.scene.shape.Rectangle;
 import javafx.scene.text.Font;
 import javafx.scene.text.Text;
-import javafx.util.Duration;
 
 
 public class Editor extends Application {
@@ -24,23 +19,26 @@ public class Editor extends Application {
         int textCenterY;
 
         /** The Text to display on the screen. */
-        public Text displayText = new Text(250, 250, "");
-        public String textToDisplay;
-        public int fontSize = 20;
+        private static final int SIZE = 250;
+        private Text displayText = new Text(SIZE, SIZE, "");
+        private String textToDisplay;
+        private static final int FONTSIZE = 20;
+        private int fontSize = FONTSIZE;
 
         private String fontName = "Verdana";
 
         private void removeLast() {
-			if (textToDisplay != null) {
-				textToDisplay = textToDisplay.substring(0, textToDisplay.length()-1);
-			}
+            if (textToDisplay != null) {
+                textToDisplay = textToDisplay.substring(0, textToDisplay.length() - 1);
+            }
         }
 
         public KeyEventHandler(final Group root, int windowWidth, int windowHeight) {
             textCenterX = 0;
             textCenterY = 0;
 
-            // Initialize some empty            // capitalization.text and add it to root so that it will be displayed.
+            // Initialize some empty
+            // capitalization.text and add it to root so that it will be displayed.
             displayText = new Text(textCenterX, textCenterY, "");
             // Always set the text origin to be VPos.TOP! Setting the origin to be VPos.TOP means
             // that when the text is assigned a y-position, that position corresponds to the
@@ -48,7 +46,7 @@ public class Editor extends Application {
             // opposed to the top of a letter like "e"), which makes calculating positions much
             // simpler!
             displayText.setTextOrigin(VPos.TOP);
-            displayText.setFont(Font.font (fontName, fontSize));
+            displayText.setFont(Font.font(fontName, fontSize));
 
             // All new Nodes need to be added to the root in order to be displayed.
             root.getChildren().add(displayText);
@@ -61,13 +59,14 @@ public class Editor extends Application {
                 // the KEY_TYPED event, javafx handles the "Shift" key and associated
      
                 if (textToDisplay == null) {
-                	textToDisplay = keyEvent.getCharacter();
+                    textToDisplay = keyEvent.getCharacter();
                 } else {
-                	textToDisplay = textToDisplay + keyEvent.getCharacter();                	
+                    textToDisplay = textToDisplay + keyEvent.getCharacter();
                 }
                 
                 if (textToDisplay.length() > 0 && textToDisplay.charAt(0) != 8) {
-                    // Ignore control keys, which have non-zero length, as well as the backspace key, which is
+                    // Ignore control keys, which have non-zero length,
+                    // as well as the backspace key, which is
                     // represented as a character of value = 8 on Windows.
                     displayText.setText(textToDisplay);
                     keyEvent.consume();
@@ -85,8 +84,8 @@ public class Editor extends Application {
                     fontSize = Math.max(0, fontSize - 5);
                     displayText.setFont(Font.font(fontName, fontSize));
                 } else if (code == KeyCode.BACK_SPACE) {
-                	removeLast();
-                    displayText.setText(textToDisplay);                	
+                    removeLast();
+                    displayText.setText(textToDisplay);
                 }
             }
         }
@@ -98,8 +97,9 @@ public class Editor extends Application {
         Group root = new Group();
         // The Scene represents the window: its height and width will be the height and width
         // of the window displayed.
-        int windowWidth = 500;
-        int windowHeight = 500;
+        private static final int WINDOW_SIZE = 500;
+        int windowWidth = WINDOW_SIZE;
+        int windowHeight = WINDOW_SIZE;
         Scene scene = new Scene(root, windowWidth, windowHeight, Color.WHITE);
 
         // To get information about what keys the user is pressing, create an EventHandler.
