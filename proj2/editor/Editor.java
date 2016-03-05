@@ -1,5 +1,4 @@
 package editor;
-
 import javafx.application.Application;
 import javafx.stage.Stage;
 import javafx.event.EventHandler;
@@ -13,6 +12,7 @@ import javafx.scene.text.Font;
 import javafx.scene.text.Text;
 
 
+
 public class Editor extends Application {
     private class KeyEventHandler implements EventHandler<KeyEvent> {
         int textCenterX;
@@ -21,21 +21,22 @@ public class Editor extends Application {
         /** The Text to display on the screen. */
         private static final int SIZE = 250;
         private Text displayText = new Text(SIZE, SIZE, "");
-        private String textToDisplay;
+        FastLinkedList2<Text> textToDisplay = new FastLinedList2<Text>();
         private static final int FONTSIZE = 20;
         private int fontSize = FONTSIZE;
 
         private String fontName = "Verdana";
 
         private void removeLast() {
-            if (textToDisplay != null) {
-                textToDisplay = textToDisplay.substring(0, textToDisplay.length() - 1);
+            if (!textToDisplay.isEmpty()) {
+                textToDisplay.deleteChar();
             }
         }
 
         public KeyEventHandler(final Group root, int windowWidth, int windowHeight) {
             textCenterX = 0;
             textCenterY = 0;
+
 
             // Initialize some empty
             // capitalization.text and add it to root so that it will be displayed.
@@ -58,11 +59,9 @@ public class Editor extends Application {
                 // Use the KEY_TYPED event rather than KEY_PRESSED for letter keys, because with
                 // the KEY_TYPED event, javafx handles the "Shift" key and associated
      
-                if (textToDisplay == null) {
-                    textToDisplay = keyEvent.getCharacter();
-                } else {
-                    textToDisplay = textToDisplay + keyEvent.getCharacter();
-                }
+                String eventChar = keyEvent.getCharacter();
+                Text eventText = new Text(0, 0, eventChar);
+
                 
                 if (textToDisplay.length() > 0 && textToDisplay.charAt(0) != 8) {
                     // Ignore control keys, which have non-zero length,
@@ -89,6 +88,24 @@ public class Editor extends Application {
                 }
             }
         }
+        public void updatePositions() {
+            double xcoord = 0;
+            double ycoord = 0;
+            Text textItem;
+            for (int i = 0; i < textToDisplay.size(); i++) {
+                textItem = textToDisplay.cyclePointer.next.item;
+                textItem.setX(xcoord);
+                textItem.setY(ycoord);
+                textItem.setTextOrigin(VPos.TOP);
+                textItem.setFont(Font.font(fontName, fontSize));
+                xcoord = xcoord + textItem.getLayoutBounds().getWidth();
+                if (xcoord > windowWidth) {
+                    xcoord = 0;
+                    ycoord = ycoord + textItem.getLayoutBounds().getHeight();
+                }
+                textToDisplay.cyclePointer = textToDisplay.cyclePointer.next;
+            }
+        }
     }
 
     @Override
@@ -97,7 +114,7 @@ public class Editor extends Application {
         Group root = new Group();
         // The Scene represents the window: its height and width will be the height and width
         // of the window displayed.
-        private static final int WINDOW_SIZE = 500;
+        final int WINDOW_SIZE = 500;
         int windowWidth = WINDOW_SIZE;
         int windowHeight = WINDOW_SIZE;
         Scene scene = new Scene(root, windowWidth, windowHeight, Color.WHITE);
