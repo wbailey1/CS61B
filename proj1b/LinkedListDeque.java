@@ -12,12 +12,15 @@ public class LinkedListDeque<Item> {
 
 	private Node sentinel;
 	private int size; 
+	private Node currentNode;
+	private int currentPos;
 
 	public LinkedListDeque() {
 		size = 0;
 		sentinel = new Node(null, null, null);
 		sentinel.prev = sentinel;
 		sentinel.next = sentinel;
+		currentNode = sentinel;
 	}
 
 	public void addFirst(Item x) {
@@ -36,6 +39,25 @@ public class LinkedListDeque<Item> {
 		size += 1;
 	}
 
+	public void addChar(Item x) {
+		Node save = currentNode.next;
+		currentNode.next = new Node(x, save, currentNode.prev.next);
+		currentNode = currentNode.next;
+		size ++;
+		currentPos ++;
+	}
+
+	public void deleteChar() {
+		if (isEmpty()) {
+			return null;
+		} 
+		else {
+			currentNode.prev.next = currentNode.next;
+			currentNode = currentNode.prev;
+			size --;
+			currentPos --;
+		}
+	}
 
 	public boolean isEmpty() {
 		if (sentinel.next == sentinel) {
