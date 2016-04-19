@@ -5,6 +5,8 @@ import org.xml.sax.helpers.DefaultHandler;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.List;
+import java.util.ArrayList;
 
 /**
  *  Parses OSM XML files using an XML SAX parser. Used to construct the graph of roads for
@@ -30,6 +32,11 @@ public class MapDBHandler extends DefaultHandler {
                     "secondary_link", "tertiary_link"));
     private String activeState = "";
     private final GraphDB g;
+    private List<String> activeRefs;
+    private String activeID;
+    private String activeLon;
+    private String activeLat;
+    private boolean wayAllowed;
 
     public MapDBHandler(GraphDB g) {
         this.g = g;
@@ -55,16 +62,20 @@ public class MapDBHandler extends DefaultHandler {
         /* Some example code on how you might begin to parse XML files. */
         if (qName.equals("node")) {
             activeState = "node";
+            activeID = attributes.getValue("id");
+            activeLon = attributes.getValue("lon");
+            activeLat = attributes.getValue("lat");
         } else if (qName.equals("way")) {
             activeState = "way";
-//            System.out.println("Beginning a way...");
+            activeRefs = new ArrayList<>();
+            activeID = attributes.getValue("id");
+            wayAllowed = false;
+        } else if (activeState.equals("way") && qName.equals("nd")) {
+            activeRefs.add(attributes.getValue("ref"));
         } else if (activeState.equals("way") && qName.equals("tag")) {
-            String k = attributes.getValue("k");
-            String v = attributes.getValue("v");
-//            System.out.println("Tag with k=" + k + ", v=" + v + ".");
-        } else if (activeState.equals("node") && qName.equals("tag") && attributes.getValue("k")
-                .equals("name")) {
-//            System.out.println("Node with name: " + attributes.getValue("v"));
+            if (attributes.getValue("k").equals("highway") && ALLOWED_HIGHWAY_TYPES.contains(attributes.getValue("v"))) {
+                wayAllowed = true;
+            }
         }
     }
 
@@ -81,9 +92,16 @@ public class MapDBHandler extends DefaultHandler {
      */
     @Override
     public void endElement(String uri, String localName, String qName) throws SAXException {
-        if (qName.equals("way")) {
-//            System.out.println("Finishing a way...");
+        if (qName.equals("way") && wayAllowed) {
+            for (int i = 0; i < activeRefs.size() - 1; i++) {
+                GraphNode ni = GraphDB.graphNodes.get(activeRefs.get(i));
+                GraphNode ni1 = GraphDB.graphNodes.get(activeRefs.get(i + 1));
+                ni.addConnection(ni1);
+                ni1.addConnection(ni);
+            }
+        } else if (qName.equals("node")) {
+            GraphDB.graphNodes.put(activeID, new GraphNode(activeID, Double.parseDouble(activeLon), Double.parseDouble(activeLat)));
+            activeState = "";
         }
     }
-
 }

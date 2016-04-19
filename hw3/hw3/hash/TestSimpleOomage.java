@@ -23,6 +23,23 @@ public class TestSimpleOomage {
           meaning no two SimpleOomages should EVER have the same
           hashCode!
          */
+        SimpleOomage oo1 = new SimpleOomage(5, 10, 20);
+        SimpleOomage oo2 = new SimpleOomage(5, 20, 10);
+        SimpleOomage oo3 = new SimpleOomage(10, 5, 20);
+        SimpleOomage oo4 = new SimpleOomage(10, 20, 5);
+        SimpleOomage oo5 = new SimpleOomage(20, 10, 5);
+        SimpleOomage oo6 = new SimpleOomage(20, 5, 10);
+        SimpleOomage ooA;
+        SimpleOomage ooB;
+        SimpleOomage[] list = {oo1, oo2, oo3, oo4, oo5, oo6};
+        for (int i = 0; i < 5; i++) {
+            ooA = list[i];
+            for (int t = i + 1; t < 6; t++) {
+                ooB = list[t];
+                assertNotEquals(ooA.hashCode(), ooB.hashCode());
+            }
+        }
+
     }
 
     @Test

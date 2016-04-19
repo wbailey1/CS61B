@@ -24,7 +24,15 @@ public class HashTableVisualizer {
 
     public static void visualize(Set<Oomage> set, int M, double scale) {
         HashTableDrawingUtility.drawLabels(M);
-
+        int hashCode;
+        int bucket;
+        int[] count = new int[M];
+        for (Oomage o : set) {
+          hashCode = o.hashCode();
+          bucket = (hashCode & 0x7FFFFFFF) % M;
+          o.draw(HashTableDrawingUtility.xCoord(count[bucket]), HashTableDrawingUtility.yCoord(bucket, M), scale);
+          count[bucket] = count[bucket] + 1;
+        }
         /* TODO: Create a visualization of the given hash table. Use
            du.xCoord and du.yCoord to figure out where to draw
            Oomages.

@@ -1,12 +1,14 @@
 import java.awt.Color;
 import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.io.OutputStream;
-import java.util.Base64;
-import java.util.HashMap;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
+import java.awt.image.BufferedImage;
+import java.awt.Graphics;
+import java.awt.Graphics2D;
+import java.io.File;
+import javax.imageio.ImageIO;
+import java.awt.BasicStroke;
 
 /* Maven is used to pull in these dependencies. */
 import com.google.gson.Gson;
@@ -17,6 +19,7 @@ import static spark.Spark.*;
  * This MapServer class is the entry point for running the JavaSpark web server for the BearMaps
  * application project, receiving API calls, handling the API call processing, and generating
  * requested images and routes.
+ *
  * @author Alan Yao
  */
 public class MapServer {
@@ -27,16 +30,26 @@ public class MapServer {
      */
     public static final double ROOT_ULLAT = 37.892195547244356, ROOT_ULLON = -122.2998046875,
             ROOT_LRLAT = 37.82280243352756, ROOT_LRLON = -122.2119140625;
-    /** Each tile is 256x256 pixels. */
+    /**
+     * Each tile is 256x256 pixels.
+     */
     public static final int TILE_SIZE = 256;
-    /** HTTP failed response. */
+    /**
+     * HTTP failed response.
+     */
     private static final int HALT_RESPONSE = 403;
-    /** Route stroke information: typically roads are not more than 5px wide. */
+    /**
+     * Route stroke information: typically roads are not more than 5px wide.
+     */
     public static final float ROUTE_STROKE_WIDTH_PX = 5.0f;
-    /** Route stroke information: Cyan with half transparency. */
+    /**
+     * Route stroke information: Cyan with half transparency.
+     */
     public static final Color ROUTE_STROKE_COLOR = new Color(108, 181, 230, 200);
-    /** The tile images are in the IMG_ROOT folder. */
-    private static final String IMG_ROOT = "img/";
+    /**
+     * The tile images are in the IMG_ROOT folder.
+     */
+    public static final String IMG_ROOT = "img/";
     /**
      * The OSM XML file path. Downloaded from <a href="http://download.bbbike.org/osm/">here</a>
      * using custom region selection.
@@ -51,7 +64,7 @@ public class MapServer {
      * w -> user viewport window width in pixels,<br> h -> user viewport height in pixels.
      **/
     private static final String[] REQUIRED_RASTER_REQUEST_PARAMS = {"ullat", "ullon", "lrlat",
-        "lrlon", "w", "h"};
+            "lrlon", "w", "h"};
     /**
      * Each route request to the server will have the following parameters
      * as keys in the params map.<br>
@@ -59,9 +72,14 @@ public class MapServer {
      * end_lat -> end point latitude, <br>end_lon -> end point longitude.
      **/
     private static final String[] REQUIRED_ROUTE_REQUEST_PARAMS = {"start_lat", "start_lon",
-        "end_lat", "end_lon"};
+            "end_lat", "end_lon"};
     /* Define any static variables here. Do not define any instance variables of MapServer. */
     private static GraphDB g;
+    public static String originNode;
+    public static String destNode;
+    public static HashMap<String, Object> rasteredImageParams;
+    public static List<String> routeStrings;
+    public static boolean isRoute = false;
 
     /**
      * Place any initialization statements that will be run before the server main loop here.
@@ -108,6 +126,7 @@ public class MapServer {
             HashMap<String, Double> params =
                     getRequestParams(req, REQUIRED_ROUTE_REQUEST_PARAMS);
             LinkedList<Long> route = findAndSetRoute(params);
+            System.out.println(route);
             return !route.isEmpty();
         });
 
@@ -143,7 +162,8 @@ public class MapServer {
     /**
      * Validate & return a parameter map of the required request parameters.
      * Requires that all input parameters are doubles.
-     * @param req HTTP Request
+     *
+     * @param req            HTTP Request
      * @param requiredParams TestParams to validate
      * @return A populated map of input parameter to it's numerical value.
      */
@@ -170,22 +190,23 @@ public class MapServer {
     /**
      * Handles raster API calls, queries for tiles and rasters the full image. <br>
      * <p>
-     *     The rastered photo must have the following properties:
-     *     <ul>
-     *         <li>Has dimensions of at least w by h, where w and h are the user viewport width
-     *         and height.</li>
-     *         <li>The tiles collected must cover the most longitudinal distance per pixel
-     *         possible, while still covering less than or equal to the amount of
-     *         longitudinal distance per pixel in the query box for the user viewport size. </li>
-     *         <li>Contains all tiles that intersect the query bounding box that fulfill the
-     *         above condition.</li>
-     *         <li>The tiles must be arranged in-order to reconstruct the full image.</li>
-     *         <li>If a current route exists, lines of width ROUTE_STROKE_WIDTH_PX and of color
-     *         ROUTE_STROKE_COLOR are drawn between all nodes on the route in the rastered photo.
-     *         </li>
-     *     </ul>
-     *     Additional image about the raster is returned and is to be included in the Json response.
+     * The rastered photo must have the following properties:
+     * <ul>
+     * <li>Has dimensions of at least w by h, where w and h are the user viewport width
+     * and height.</li>
+     * <li>The tiles collected must cover the most longitudinal distance per pixel
+     * possible, while still covering less than or equal to the amount of
+     * longitudinal distance per pixel in the query box for the user viewport size. </li>
+     * <li>Contains all tiles that intersect the query bounding box that fulfill the
+     * above condition.</li>
+     * <li>The tiles must be arranged in-order to reconstruct the full image.</li>
+     * <li>If a current route exists, lines of width ROUTE_STROKE_WIDTH_PX and of color
+     * ROUTE_STROKE_COLOR are drawn between all nodes on the route in the rastered photo.
+     * </li>
+     * </ul>
+     * Additional image about the raster is returned and is to be included in the Json response.
      * </p>
+     *
      * @param params Map of the HTTP GET request's query parameters - the query bounding box and
      *               the user viewport width and height.
      * @param os     An OutputStream that the resulting png image should be written to.
@@ -201,8 +222,96 @@ public class MapServer {
      * "query_success" -> Boolean, whether an image was successfully rastered. <br>
      * @see #REQUIRED_RASTER_REQUEST_PARAMS
      */
-    public static Map<String, Object> getMapRaster(Map<String, Double> params, OutputStream os) {
-        HashMap<String, Object> rasteredImageParams = new HashMap<>();
+    public static Map<String, Object> getMapRaster(Map<String, Double> params, OutputStream os) throws IOException {
+        QuadTree mappedData = new QuadTree(ROOT_ULLON, ROOT_LRLAT, ROOT_LRLON, ROOT_ULLAT);
+        double ullon = params.get("ullon");
+        double ullat = params.get("ullat");
+        double lrlon = params.get("lrlon");
+        double lrlat = params.get("lrlat");
+        double w = params.get("w");
+        double h = params.get("h");
+        mappedData.setParams(ullon, ullat, lrlon, lrlat);
+        double reqdpp = (lrlon - ullon) / w;
+        double dpp = (ROOT_LRLON - ROOT_ULLON) / 256;
+        int depth = 0;
+        while (dpp > reqdpp) {
+            dpp = dpp / 2;
+            depth++;
+        }
+        if (depth > 7) {
+            depth = 7;
+        }
+        List<Node> emptyList = new ArrayList<Node>();
+        List<Node> images = mappedData.intersects(mappedData.getRootNode(), depth, emptyList);
+        Collections.sort(images);
+        int height = (int) Math.round(Math.sqrt(images.size() * h / w));
+        if (height == 0) {
+            height = 1;
+        }
+        int width = Math.round(images.size() / height);
+        if (width * height != images.size()) {
+            height++;
+            if (width * height != images.size()) {
+                height--;
+                width++;
+                if (width * height != images.size()) {
+                    width = width - 2;
+                    height++;
+                }
+            }
+        }
+        int rasterWidth = 256 * width;
+        int rasterHeight = 256 * height;
+        BufferedImage result = new BufferedImage(rasterWidth, rasterHeight, BufferedImage.TYPE_INT_RGB);
+        Graphics g = result.getGraphics();
+        int x = 0;
+        int y = result.getHeight() - 256;
+        double imageWidth = images.get(0).getW();
+        double imageHeight = images.get(0).getH();
+        double rasterUllon = images.get(0).getX();
+        double rasterUllat = images.get(0).getY();
+        double rasterLrlon = images.get(0).getX() + imageWidth;
+        double rasterLrlat = images.get(0).getY() - imageHeight;
+        for (Node image : images) {
+            rasterUllon = Math.min(rasterUllon, image.getX());
+            rasterUllat = Math.max(rasterUllat, image.getY());
+            rasterLrlon = Math.max(rasterLrlon, image.getX() + imageWidth);
+            rasterLrlat = Math.min(rasterLrlat, image.getY() - imageHeight);
+            String filename = image.getFilename();
+            BufferedImage bi = ImageIO.read(new File(IMG_ROOT + filename));
+            g.drawImage(bi, x, y, null);
+            x += 256;
+            if (x > result.getWidth() - 256) {
+                x = 0;
+                y -= 256;
+            }
+        }
+        rasteredImageParams = new HashMap<>();
+        rasteredImageParams.put("raster_lr_lon", rasterLrlon);
+        rasteredImageParams.put("raster_ul_lon", rasterUllon);
+        rasteredImageParams.put("raster_width", rasterWidth);
+        rasteredImageParams.put("raster_height", rasterHeight);
+        rasteredImageParams.put("raster_ul_lat", rasterUllat);
+        rasteredImageParams.put("raster_lr_lat", rasterLrlat);
+        rasteredImageParams.put("depth", depth);
+        rasteredImageParams.put("query_success", true);
+        if (isRoute) {
+            Graphics2D g2 = (Graphics2D) g;
+            g2.setStroke(new BasicStroke(MapServer.ROUTE_STROKE_WIDTH_PX, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+            g2.setColor(ROUTE_STROKE_COLOR);
+            for (int i = 0; i < routeStrings.size() - 1; i++) {
+                String ns = routeStrings.get(i);
+                String ns1 = routeStrings.get(i + 1);
+                GraphNode a = GraphDB.graphNodes.get(ns);
+                GraphNode b = GraphDB.graphNodes.get(ns1);
+                int x1 = lontoPix(a.getLon());
+                int y1 = rasterHeight - lattoPix(a.getLat());
+                int x2 = lontoPix(b.getLon());
+                int y2 = rasterHeight - lattoPix(b.getLat());
+                g.drawLine(x1, y1, x2, y2);
+            }
+        }
+        ImageIO.write(result, "PNG", os);
         return rasteredImageParams;
     }
 
@@ -213,21 +322,50 @@ public class MapServer {
      * The route should start from the closest node to the start point and end at the closest node
      * to the endpoint. Distance is defined as the euclidean between two points (lon1, lat1) and
      * (lon2, lat2).
+     *
      * @param params from the API call described in REQUIRED_ROUTE_REQUEST_PARAMS
      * @return A LinkedList of node ids from the start of the route to the end.
      */
     public static LinkedList<Long> findAndSetRoute(Map<String, Double> params) {
-        return new LinkedList<>();
+        double startLon = params.get("start_lon");
+        double startLat = params.get("start_lat");
+        double endLon = params.get("end_lon");
+        double endLat = params.get("end_lat");
+        originNode = GraphDB.getClosestNode(startLon, startLat);
+        destNode = GraphDB.getClosestNode(endLon, endLat);
+        LinkedList<Long> routeIDs = new LinkedList<>();
+        routeStrings = GraphDB.findRoute(originNode, destNode);
+        for (String node : routeStrings) {
+            routeIDs.add(Long.parseLong(node));
+        }
+        isRoute = true;
+        return routeIDs;
+    }
+
+    public static int lontoPix(double lon) {
+        double rasterUllon = (double) rasteredImageParams.get("raster_ul_lon");
+        double rasterLrlon = (double) rasteredImageParams.get("raster_lr_lon");
+        int rasterWidth = (int) rasteredImageParams.get("raster_width");
+        return (int) (rasterWidth * (rasterUllon - lon) /  (rasterUllon - rasterLrlon));
+    }
+
+    public static int lattoPix(double lat) {
+        double rasterUllat = (double) rasteredImageParams.get("raster_ul_lat");
+        double rasterLrLat = (double) rasteredImageParams.get("raster_lr_lat");
+        int rasterHeight = (int) rasteredImageParams.get("raster_height");
+        return (int) (rasterHeight * (lat - rasterLrLat) / (rasterUllat - rasterLrLat));
     }
 
     /**
      * Clear the current found route, if it exists.
      */
     public static void clearRoute() {
+        isRoute = false;
     }
 
     /**
      * In linear time, collect all the names of OSM locations that prefix-match the query string.
+     *
      * @param prefix Prefix string to be searched for. Could be any case, with our without
      *               punctuation.
      * @return A <code>List</code> of the full names of locations whose cleaned name matches the
@@ -240,6 +378,7 @@ public class MapServer {
     /**
      * Collect all locations that match a cleaned <code>locationName</code>, and return
      * information about each node that matches.
+     *
      * @param locationName A full name of a location searched for.
      * @return A list of locations whose cleaned name matches the
      * cleaned <code>locationName</code>, and each location is a map of parameters for the Json
