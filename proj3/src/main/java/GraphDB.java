@@ -2,7 +2,10 @@ import org.xml.sax.SAXException;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.*;
+import java.util.HashMap;
+import java.util.ArrayList;
+import java.util.Map;
+import java.util.Collections;
 import javax.xml.parsers.ParserConfigurationException;
 import javax.xml.parsers.SAXParser;
 import javax.xml.parsers.SAXParserFactory;
@@ -16,16 +19,16 @@ import java.util.PriorityQueue;
  * @author Alan Yao
  */
 public class GraphDB {
-    public static HashMap<String, GraphNode> graphNodes = new HashMap<>();
+    private static HashMap<String, GraphNode> graphNodes = new HashMap<>();
 
     /**
      * Example constructor shows how to create and start an XML parser.
      *
-     * @param db_path Path to the XML file to be parsed.
+     * @param dbpath Path to the XML file to be parsed.
      */
-    public GraphDB(String db_path) {
+    public GraphDB(String dbpath) {
         try {
-            File inputFile = new File(db_path);
+            File inputFile = new File(dbpath);
             SAXParserFactory factory = SAXParserFactory.newInstance();
             SAXParser saxParser = factory.newSAXParser();
             MapDBHandler maphandler = new MapDBHandler(this);
@@ -67,13 +70,18 @@ public class GraphDB {
         double minDist = 1;
         String closestNode = null;
         for (Map.Entry<String, GraphNode> entry : graphNodes.entrySet()) {
-            double dist = Math.sqrt(Math.pow(lon - entry.getValue().getLon(), 2.0) + Math.pow(lat - entry.getValue().getLat(), 2.0));
+            double dist = Math.sqrt(Math.pow(lon - entry.getValue().getLon(), 2.0)
+                    + Math.pow(lat - entry.getValue().getLat(), 2.0));
             if (dist < minDist) {
                 closestNode = entry.getKey();
                 minDist = dist;
             }
         }
         return closestNode;
+    }
+
+    public static HashMap<String, GraphNode> getGraphNodes() {
+        return graphNodes;
     }
 
     public static List<String> findRoute(String originNode, String destNode) {
@@ -84,25 +92,35 @@ public class GraphDB {
         List<String> toReturn = new ArrayList<>();
         HashMap<String, GraphNode> seen = new HashMap<>();
         seen.put(originNode, graphNodes.get(originNode));
+        graphNodes.get(originNode).setRouteDistance(0.0);
+        graphNodes.get(originNode).setRouteParent(null);
         while (!solved && !queue.isEmpty()) {
             curr = queue.poll();
-            seen.put(curr.getID(), curr);
             if (curr.getID().equals(destNode)) {
                 solved = true;
                 toReturn.add(curr.getID());
-                while (curr.routeParent != null) {
-                    toReturn.add(curr.routeParent.getID());
-                    curr = curr.routeParent;
+                while (curr.getRouteParent() != null) {
+                    toReturn.add(curr.getRouteParent().getID());
+                    curr = curr.getRouteParent();
                 }
                 Collections.reverse(toReturn);
             } else {
-                for (GraphNode other : curr.getConnections()) {
-                    double newroutedistance = curr.routeDistance + Math.sqrt(Math.pow(curr.getLon()
-                            - other.getLon(), 2.0) + Math.pow(curr.getLat() - other.getLat(), 2.0));
-                    if (curr.routeParent == null || !seen.containsKey(other.getID())) {
 
-                        other.routeParent = curr;
-                        other.routeDistance = newroutedistance;
+                for (GraphNode other : curr.getConnections()) {
+                    double newroutedistance = curr.getRouteDistance()
+                            + Math.sqrt(Math.pow(curr.getLon() - other.getLon(),
+                                    2.0) + Math.pow(curr.getLat() - other.getLat(), 2.0));
+                    if (curr.getRouteParent() == null || !seen.containsKey(other.getID())) {
+                        other.setRouteParent(curr);
+                        other.setRouteDistance(newroutedistance);
+                        seen.put(other.getID(), other);
+                        queue.add(other);
+                    } else if (other.getRouteDistance() > newroutedistance) {
+                        queue.remove(other);
+                        seen.remove(other);
+                        other.setRouteParent(curr);
+                        other.setRouteDistance(newroutedistance);
+                        seen.put(other.getID(), other);
                         queue.add(other);
                     }
                 }

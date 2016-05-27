@@ -89,7 +89,7 @@ public class QuadTree {
     public List<Node> intersects(Node n, int depth, List<Node> list) {
         if (depth == n.getDepth() || n.getq1() == null) {
             if (contains(n)) {
-                if(!list.contains(n)) {
+                if (!list.contains(n)) {
                     list.add(n);
                 }
             }

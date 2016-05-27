@@ -73,7 +73,8 @@ public class MapDBHandler extends DefaultHandler {
         } else if (activeState.equals("way") && qName.equals("nd")) {
             activeRefs.add(attributes.getValue("ref"));
         } else if (activeState.equals("way") && qName.equals("tag")) {
-            if (attributes.getValue("k").equals("highway") && ALLOWED_HIGHWAY_TYPES.contains(attributes.getValue("v"))) {
+            if (attributes.getValue("k").equals("highway")
+                    && ALLOWED_HIGHWAY_TYPES.contains(attributes.getValue("v"))) {
                 wayAllowed = true;
             }
         }
@@ -94,13 +95,14 @@ public class MapDBHandler extends DefaultHandler {
     public void endElement(String uri, String localName, String qName) throws SAXException {
         if (qName.equals("way") && wayAllowed) {
             for (int i = 0; i < activeRefs.size() - 1; i++) {
-                GraphNode ni = GraphDB.graphNodes.get(activeRefs.get(i));
-                GraphNode ni1 = GraphDB.graphNodes.get(activeRefs.get(i + 1));
+                GraphNode ni = GraphDB.getGraphNodes().get(activeRefs.get(i));
+                GraphNode ni1 = GraphDB.getGraphNodes().get(activeRefs.get(i + 1));
                 ni.addConnection(ni1);
                 ni1.addConnection(ni);
             }
         } else if (qName.equals("node")) {
-            GraphDB.graphNodes.put(activeID, new GraphNode(activeID, Double.parseDouble(activeLon), Double.parseDouble(activeLat)));
+            GraphDB.getGraphNodes().put(activeID, new GraphNode(activeID,
+                    Double.parseDouble(activeLon), Double.parseDouble(activeLat)));
             activeState = "";
         }
     }

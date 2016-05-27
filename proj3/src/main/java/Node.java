@@ -1,4 +1,4 @@
-public class Node implements Comparable<Node>{
+public class Node implements Comparable<Node> {
 
     private double x;
     private double y;
@@ -65,20 +65,20 @@ public class Node implements Comparable<Node>{
         return h;
     }
 
-    public void setq1(Node q1) {
-        this.q1 = q1;
+    public void setq1(Node q) {
+        this.q1 = q;
     }
 
-    public void setq2(Node q2) {
-        this.q2 = q2;
+    public void setq2(Node q) {
+        this.q2 = q;
     }
 
-    public void setq3(Node q3) {
-        this.q3 = q3;
+    public void setq3(Node q) {
+        this.q3 = q;
     }
 
-    public void setq4(Node q4) {
-        this.q4 = q4;
+    public void setq4(Node q) {
+        this.q4 = q;
     }
 
     public Node getq1() {

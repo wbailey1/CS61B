@@ -3,11 +3,11 @@ import java.util.List;
 
 public class GraphNode {
     private String id;
-    public double lon;
-    public double lat;
+    private double lon;
+    private double lat;
     private List<GraphNode> connections;
-    public double routeDistance;
-    public GraphNode routeParent;
+    private double routeDistance;
+    private GraphNode routeParent;
 
     public GraphNode(String id, double lon, double lat) {
         this.id = id;
@@ -36,5 +36,21 @@ public class GraphNode {
 
     public double getLat() {
         return lat;
+    }
+
+    public double getRouteDistance() {
+        return routeDistance;
+    }
+
+    public void setRouteDistance(double x) {
+        this.routeDistance = x;
+    }
+
+    public GraphNode getRouteParent() {
+        return routeParent;
+    }
+
+    public void setRouteParent(GraphNode x) {
+        this.routeParent = x;
     }
 }

@@ -2,7 +2,14 @@ import java.awt.Color;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
-import java.util.*;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Base64;
+import java.util.LinkedList;
+import java.util.ArrayList;
+import java.util.Set;
+import java.util.Collections;
 import java.awt.image.BufferedImage;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
@@ -63,23 +70,23 @@ public class MapServer {
      * lrlat -> lower right corner latitude,<br> lrlon -> lower right corner longitude <br>
      * w -> user viewport window width in pixels,<br> h -> user viewport height in pixels.
      **/
-    private static final String[] REQUIRED_RASTER_REQUEST_PARAMS = {"ullat", "ullon", "lrlat",
-            "lrlon", "w", "h"};
+    private static final String[] REQUIRED_RASTER_REQUEST_PARAMS = {"ullat", "ullon",
+        "lrlat", "lrlon", "w", "h"};
     /**
      * Each route request to the server will have the following parameters
      * as keys in the params map.<br>
      * start_lat -> start point latitude,<br> start_lon -> start point longitude,<br>
      * end_lat -> end point latitude, <br>end_lon -> end point longitude.
      **/
-    private static final String[] REQUIRED_ROUTE_REQUEST_PARAMS = {"start_lat", "start_lon",
-            "end_lat", "end_lon"};
+    private static final String[] REQUIRED_ROUTE_REQUEST_PARAMS = {"start_lat",
+        "start_lon", "end_lat", "end_lon"};
     /* Define any static variables here. Do not define any instance variables of MapServer. */
     private static GraphDB g;
-    public static String originNode;
-    public static String destNode;
-    public static HashMap<String, Object> rasteredImageParams;
-    public static List<String> routeStrings;
-    public static boolean isRoute = false;
+    private static String originNode;
+    private static String destNode;
+    private static HashMap<String, Object> rasteredImageParams;
+    private static List<String> routeStrings;
+    private static boolean isRoute = false;
 
     /**
      * Place any initialization statements that will be run before the server main loop here.
@@ -222,7 +229,8 @@ public class MapServer {
      * "query_success" -> Boolean, whether an image was successfully rastered. <br>
      * @see #REQUIRED_RASTER_REQUEST_PARAMS
      */
-    public static Map<String, Object> getMapRaster(Map<String, Double> params, OutputStream os) throws IOException {
+    public static Map<String, Object> getMapRaster(
+            Map<String, Double> params, OutputStream os) throws IOException {
         QuadTree mappedData = new QuadTree(ROOT_ULLON, ROOT_LRLAT, ROOT_LRLON, ROOT_ULLAT);
         double ullon = params.get("ullon");
         double ullat = params.get("ullat");
@@ -233,39 +241,16 @@ public class MapServer {
         mappedData.setParams(ullon, ullat, lrlon, lrlat);
         double reqdpp = (lrlon - ullon) / w;
         double dpp = (ROOT_LRLON - ROOT_ULLON) / 256;
+        double dpph = (ROOT_ULLAT - ROOT_LRLAT) / 256;
         int depth = 0;
-        while (dpp > reqdpp) {
+        while (dpp > reqdpp && depth < 7) {
             dpp = dpp / 2;
+            dpph = dpph / 2;
             depth++;
-        }
-        if (depth > 7) {
-            depth = 7;
         }
         List<Node> emptyList = new ArrayList<Node>();
         List<Node> images = mappedData.intersects(mappedData.getRootNode(), depth, emptyList);
         Collections.sort(images);
-        int height = (int) Math.round(Math.sqrt(images.size() * h / w));
-        if (height == 0) {
-            height = 1;
-        }
-        int width = Math.round(images.size() / height);
-        if (width * height != images.size()) {
-            height++;
-            if (width * height != images.size()) {
-                height--;
-                width++;
-                if (width * height != images.size()) {
-                    width = width - 2;
-                    height++;
-                }
-            }
-        }
-        int rasterWidth = 256 * width;
-        int rasterHeight = 256 * height;
-        BufferedImage result = new BufferedImage(rasterWidth, rasterHeight, BufferedImage.TYPE_INT_RGB);
-        Graphics g = result.getGraphics();
-        int x = 0;
-        int y = result.getHeight() - 256;
         double imageWidth = images.get(0).getW();
         double imageHeight = images.get(0).getH();
         double rasterUllon = images.get(0).getX();
@@ -277,9 +262,18 @@ public class MapServer {
             rasterUllat = Math.max(rasterUllat, image.getY());
             rasterLrlon = Math.max(rasterLrlon, image.getX() + imageWidth);
             rasterLrlat = Math.min(rasterLrlat, image.getY() - imageHeight);
+        }
+        int rasterWidth = (int) (Math.round((rasterLrlon - rasterUllon) / dpp) / 256) * 256;
+        int rasterHeight = (int) (Math.round((rasterUllat - rasterLrlat) / dpph) / 256) * 256;
+        BufferedImage result =
+                new BufferedImage(rasterWidth, rasterHeight, BufferedImage.TYPE_INT_RGB);
+        Graphics g1 = result.getGraphics();
+        int x = 0;
+        int y = result.getHeight() - 256;
+        for (Node image : images) {
             String filename = image.getFilename();
             BufferedImage bi = ImageIO.read(new File(IMG_ROOT + filename));
-            g.drawImage(bi, x, y, null);
+            g1.drawImage(bi, x, y, null);
             x += 256;
             if (x > result.getWidth() - 256) {
                 x = 0;
@@ -296,19 +290,20 @@ public class MapServer {
         rasteredImageParams.put("depth", depth);
         rasteredImageParams.put("query_success", true);
         if (isRoute) {
-            Graphics2D g2 = (Graphics2D) g;
-            g2.setStroke(new BasicStroke(MapServer.ROUTE_STROKE_WIDTH_PX, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+            Graphics2D g2 = (Graphics2D) g1;
+            g2.setStroke(new BasicStroke(MapServer.ROUTE_STROKE_WIDTH_PX,
+                    BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
             g2.setColor(ROUTE_STROKE_COLOR);
             for (int i = 0; i < routeStrings.size() - 1; i++) {
                 String ns = routeStrings.get(i);
                 String ns1 = routeStrings.get(i + 1);
-                GraphNode a = GraphDB.graphNodes.get(ns);
-                GraphNode b = GraphDB.graphNodes.get(ns1);
-                int x1 = lontoPix(a.getLon());
-                int y1 = rasterHeight - lattoPix(a.getLat());
-                int x2 = lontoPix(b.getLon());
-                int y2 = rasterHeight - lattoPix(b.getLat());
-                g.drawLine(x1, y1, x2, y2);
+                GraphNode a = GraphDB.getGraphNodes().get(ns);
+                GraphNode b = GraphDB.getGraphNodes().get(ns1);
+                int x1 = lontoPix(a.getLon(), dpp);
+                int y1 = rasterHeight - lattoPix(a.getLat(), dpph);
+                int x2 = lontoPix(b.getLon(), dpp);
+                int y2 = rasterHeight - lattoPix(b.getLat(), dpph);
+                g2.drawLine(x1, y1, x2, y2);
             }
         }
         ImageIO.write(result, "PNG", os);
@@ -342,18 +337,25 @@ public class MapServer {
         return routeIDs;
     }
 
-    public static int lontoPix(double lon) {
+    public static int lontoPix(double lon, double dpp) {
         double rasterUllon = (double) rasteredImageParams.get("raster_ul_lon");
         double rasterLrlon = (double) rasteredImageParams.get("raster_lr_lon");
         int rasterWidth = (int) rasteredImageParams.get("raster_width");
-        return (int) (rasterWidth * (rasterUllon - lon) /  (rasterUllon - rasterLrlon));
+        return (int) ((lon - rasterUllon) / dpp);
+        // return (int) (rasterWidth * (rasterUllon - lon) / (rasterUllon - rasterLrlon));
     }
 
-    public static int lattoPix(double lat) {
+    public static int lattoPix(double lat, double dpp) {
         double rasterUllat = (double) rasteredImageParams.get("raster_ul_lat");
         double rasterLrLat = (double) rasteredImageParams.get("raster_lr_lat");
         int rasterHeight = (int) rasteredImageParams.get("raster_height");
-        return (int) (rasterHeight * (lat - rasterLrLat) / (rasterUllat - rasterLrLat));
+        double toReturn = ((lat - rasterLrLat) / dpp);
+        return (int) Math.ceil(toReturn);
+        //return (int) (rasterHeight * (lat - rasterLrLat) / (rasterUllat - rasterLrLat));
+    }
+
+    public static String getDestNode() {
+        return destNode;
     }
 
     /**

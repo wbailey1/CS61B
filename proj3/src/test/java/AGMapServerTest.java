@@ -5,10 +5,14 @@ import org.junit.Before;
 import java.io.ByteArrayOutputStream;
 import java.io.FileInputStream;
 import java.io.ObjectInputStream;
-import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.io.InputStream;
+import java.awt.image.BufferedImage;
+import java.io.File;
+import javax.imageio.ImageIO;
+import java.io.ByteArrayInputStream;
 
 public class AGMapServerTest {
     static List<TestParams> params;
@@ -24,7 +28,7 @@ public class AGMapServerTest {
     public void setUp() throws Exception {
         if (initialized) return;
         MapServer.initialize();
-        FileInputStream fis = new FileInputStream("test_ser_data");
+        FileInputStream fis = new FileInputStream("test_data_v2");
         ObjectInputStream ois = new ObjectInputStream(fis);
         params = (List<TestParams>) ois.readObject();
         ois.close();
@@ -36,7 +40,7 @@ public class AGMapServerTest {
             assertTrue(m2.containsKey(key));
             Object o1 = m1.get(key);
             Object o2 = m2.get(key);
-            if (o1 instanceof Double && o2 instanceof Double) {
+            if (o1 instanceof Double) {
                 assertTrue(err, Math.abs((Double)o1 - (Double)o2) < doubleThreshhold);
             } else {
                 assertEquals(err, o1, o2);
@@ -103,6 +107,16 @@ public class AGMapServerTest {
             ByteArrayOutputStream os = new ByteArrayOutputStream();
             MapServer.getMapRaster(p.raster_params, os);
             byte[] student_output = os.toByteArray();
+
+            InputStream in = new ByteArrayInputStream(p.route_raster);
+            BufferedImage pRoute = ImageIO.read(in);
+
+            in = new ByteArrayInputStream(student_output);
+            BufferedImage sRoute = ImageIO.read(in);
+
+            ImageIO.write(pRoute, "png", new File("answer.png"));
+            ImageIO.write(sRoute, "png", new File("me.png"));
+
             assertArrayEquals("Raw image output differed for input: " + p.raster_params + "\nWith" +
                     " route params: " + p.route_params + ".\n See " +
                     "example image " + i + ".\n", p.route_raster, student_output);
@@ -137,9 +151,6 @@ public class AGMapServerTest {
     public void testGetLocations() throws Exception {
         for (TestParams p : params) {
             List<Map<String, Object>> student_search_result = MapServer.getLocations(p.actual_search_param);
-            Collections.sort(student_search_result,
-                    (Map<String, Object> o1, Map<String, Object> o2) ->
-                            ((Long) o1.get("id")).compareTo((Long) o2.get("id")));
             assertEquals("Search results differ for search term: " + p.actual_search_param,
                     p.actual_search_result, student_search_result);
         }
