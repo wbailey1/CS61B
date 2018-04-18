@@ -1,17 +1,10 @@
 ~ number: 13
 ~ title: Linear Sorting (It's possible!)
 
-Navigation
------------------
-
-- [Counting Sort](#counting)
-- [Radix Sort](#radix)
-- [Submission](#Submission)
-
 This week in lab you're going to be writing Counting sort and Radix sort. 
 
-<a name="counting"></a> Counting Sort
---------------------------------
+Counting Sort
+----
 
 #### CountingSort.java
 
@@ -25,9 +18,8 @@ Fill in the `betterCountingSort` method so that it still does a counting based s
 
 For fun (optional): Add a test to `CountingSortTester` that causes your `betterCountingSort` to fail.
 
-
-<a name="radix"></a> Radix Sort
-------------------------------
+Radix Sort
+----
 
 #### RadixSort.java
 
@@ -37,13 +29,13 @@ For our purposes in this lab, we are going to be sorting ASCII Strings which hav
 
 Since we have 256 characters to use, we have a radix of 256 (R = 256). Write the method 'sort' in `RadixSort.java` that will sort the list of ASCII Strings that is passed in and return the sorted list. Make sure the method is NON-destructive (so the original list cannot change). Feel free to add any helper methods you want (you can also use your counting sort implementation). [Here](https://www.cs.usfca.edu/~galles/visualization/RadixSort.html) is a great tool for seeing how Radix sort works visually.
 
-Keep in mind that Radix Sort on Strings runs in `O(N*M)` time where `N` is the number of Strings and `M` is the length of the longest String.
+Keep in mind that Radix Sort on Strings runs in `O(N*M)` time where `N` is the number of Strings and `M` is the length of the longest String. HINT: Remember ASCII codes start from 0, not 1.
 
 Extra for experts (optional): Compare the runtime of your Radix sort compared to `Arrays.sort`. Which is faster for short arrays? Long arrays? Do the values in the array matter?
 
-<a name="submission"></a> Submission
---------------------------------
+Submission
+----
 
-Submit zip file with `CountingSort.java`, `CountingSortTester.java`, `RadixSort.java`, and `MagicWord13.java` inside a folder called `lab13`.
+Submit zip file with `CountingSort.java`, `CountingSortTester.java`, `RadixSort.java`, and `MagicWord13.java`.
 
 Note the MagicWord has been provided for free, since we will not cover counting sort untli the day of the lab.

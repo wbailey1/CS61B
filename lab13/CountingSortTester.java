@@ -4,7 +4,7 @@ import org.junit.Test;
 public class CountingSortTester {
 
     /**
-     * Array that will cause CountingSort.naiveCountingSort to fail
+     * Array that will be properly sorted with CountingSort.naiveCountingSort
      **/
     public static int[] nonNegative = {9, 5, 2, 1, 5, 3, 0, 3, 1, 1};
 
@@ -50,6 +50,6 @@ public class CountingSortTester {
 
 
     public static void main(String[] args) {
-        jh61b.junit.TestRunner.runTests(CountingSortTester.class);
+        jh61b.junit.TestRunner.runTests("all", CountingSortTester.class);
     }	
 } 
