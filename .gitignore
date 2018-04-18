@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 *.pyc
 .DS_Store
 node_modules/
@@ -7,6 +8,17 @@ node_modules/
 ### Java ###
 *.class
 
+=======
+# Compiled class file
+*.class
+
+# Log file
+*.log
+
+# BlueJ files
+*.ctxt
+
+>>>>>>> c702041951969df0dfaddac181bd915ecbe9a296
 # Mobile Tools for Java (J2ME)
 .mtj.tmp/
 
@@ -14,6 +26,7 @@ node_modules/
 *.jar
 *.war
 *.ear
+<<<<<<< HEAD
 
 # virtual machine crash logs, see http://www.java.com/en/download/help/error_hotspot.xml
 hs_err_pid*
@@ -306,3 +319,11 @@ tramp
 # Project 3 things
 proj3/img
 proj3/target
+=======
+*.zip
+*.tar.gz
+*.rar
+
+# virtual machine crash logs, see http://www.java.com/en/download/help/error_hotspot.xml
+hs_err_pid*
+>>>>>>> c702041951969df0dfaddac181bd915ecbe9a296
